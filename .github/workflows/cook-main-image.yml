@@ -1,0 +1,53 @@
+name: Cook main image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  cook-main-image:
+    name: Cook main image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create image tags
+        id: image_tags
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=main-{{ sha }}-{{ date 'YYYYMMDDHHmm' }}
+            type=raw,value=latest
+
+      - name: Build the image and push it to the registry
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          platforms: linux/amd64
+          tags: ${{ steps.image_tags.outputs.tags }}
+          labels: ${{ steps.image_tags.outputs.labels }}
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
