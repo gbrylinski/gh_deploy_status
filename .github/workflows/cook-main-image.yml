@@ -1,6 +1,7 @@
 name: Cook main image
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
