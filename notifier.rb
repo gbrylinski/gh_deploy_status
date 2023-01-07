@@ -15,12 +15,14 @@ class GithubStatus
     @task = ENV['DEPLOYMENT_TASK'] || 'helm_release'
     @status = ENV['DEPLOYMENT_STATUS'] || 'in_progress'
     @desc = ENV['DEPLOYMENT_DESC'] || 'Helm Release'
+    @log_url = ENV['DEPLOYMENT_LOG_URL'] || ''
   end
 
   def call
     data = {
       environment: @env,
-      state: @status
+      state: @status,
+      log_url: @log_url
     }
 
     post_status(data)
@@ -31,7 +33,7 @@ class GithubStatus
   def post_status(data)
     response = http.post("/repos/#{@repository}/deployments/#{deployment_id}/statuses", data.to_json, headers)
     json = JSON.parse(response.body)
-    puts "Status iD: #{json.fetch('id')}"
+    puts "Status JSON\n: #{JSON.pretty_generate(json)}"
   end
 
   def deployment_id
@@ -48,13 +50,17 @@ class GithubStatus
     }
     response = http.post("/repos/#{@repository}/deployments", data.to_json, headers)
     json = JSON.parse(response.body)
-    json.fetch('id')
+    json.fetch('id').tap do |id|
+      puts "New deployment ID: #{id}"
+    end
   end
 
   def existing_deployment_id
     response = http.get("/repos/#{@repository}/deployments?ref=#{@ref}&task=#{@task}", headers)
     json = JSON.parse(response.body)
-    json.first&.fetch('id')
+    json.first&.fetch('id').tap do |id|
+      puts "Existing deployment ID: #{id}"
+    end
   end
 
   def http
